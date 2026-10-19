@@ -1,6 +1,6 @@
 import { pool } from '../db/pool.js'
 import { verifyPin } from '../utils/password.js'
-import { generateToken } from '../utils/jwt.js'
+import { generateToken, verifyToken } from '../utils/jwt.js' // Added verifyToken
 import { env } from '../config/env.js'
 
 export const login = async (req, res) => {
@@ -28,9 +28,9 @@ export const login = async (req, res) => {
 
     res.cookie(env.cookieName, token, {
       httpOnly: true,
-      secure: isProd, // Only true if HTTPS
+      secure: isProd, 
       sameSite: isProd ? 'none' : 'lax',
-      maxAge: 60 * 60 * 1000 // 1 hour
+      maxAge: 24 * 60 * 60 * 1000 // Changed to 24 hours to keep them logged in longer
     })
 
     res.json({
@@ -44,7 +44,15 @@ export const login = async (req, res) => {
 }
 
 export const logout = (req, res) => {
-  res.clearCookie(env.cookieName)
+  const isProd = env.nodeEnv === 'production'
+  
+  // CRITICAL: clearCookie MUST have the exact same flags as res.cookie
+  res.clearCookie(env.cookieName, {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+    path: '/'
+  })
   res.json({ success: true, message: 'Logged out' })
 }
 
@@ -53,7 +61,7 @@ export const checkSession = (req, res) => {
   if (!token) return res.json({ valid: false })
 
   try {
-    const decoded = verifyToken(token) // from utils/jwt
+    const decoded = verifyToken(token) 
     res.json({ valid: true, user: decoded })
   } catch (err) {
     res.json({ valid: false })
