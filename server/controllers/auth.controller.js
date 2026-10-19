@@ -1,6 +1,6 @@
 import { pool } from '../db/pool.js'
 import { verifyPin } from '../utils/password.js'
-import { generateToken, verifyToken } from '../utils/jwt.js' // Added verifyToken
+import { generateToken, verifyToken } from '../utils/jwt.js'
 import { env } from '../config/env.js'
 
 export const login = async (req, res) => {
@@ -30,7 +30,9 @@ export const login = async (req, res) => {
       httpOnly: true,
       secure: isProd, 
       sameSite: isProd ? 'none' : 'lax',
-      maxAge: 24 * 60 * 60 * 1000 // Changed to 24 hours to keep them logged in longer
+      partitioned: isProd, // CRITICAL: Allows cross-site cookies on Chrome/Brave
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/' 
     })
 
     res.json({
@@ -46,11 +48,12 @@ export const login = async (req, res) => {
 export const logout = (req, res) => {
   const isProd = env.nodeEnv === 'production'
   
-  // CRITICAL: clearCookie MUST have the exact same flags as res.cookie
+  // clearCookie MUST have the exact same flags as res.cookie
   res.clearCookie(env.cookieName, {
     httpOnly: true,
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
+    partitioned: isProd,
     path: '/'
   })
   res.json({ success: true, message: 'Logged out' })
